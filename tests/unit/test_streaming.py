@@ -220,6 +220,52 @@ def test_client_connect_with_redact_pii(mocker: MockFixture):
     assert "phone_number" in actual_url
 
 
+def test_client_connect_with_granular_location_pii_policies(mocker: MockFixture):
+    # Given: client + granular location PII policies
+    actual_url = None
+
+    def mocked_websocket_connect(
+        url: str, additional_headers: dict, open_timeout: float
+    ):
+        nonlocal actual_url
+        actual_url = url
+
+    mocker.patch(
+        "assemblyai.streaming.v3.client.websocket_connect",
+        new=mocked_websocket_connect,
+    )
+
+    _disable_rw_threads(mocker)
+
+    options = StreamingClientOptions(api_key="test", api_host="api.example.com")
+    client = StreamingClient(options)
+
+    params = StreamingParameters(
+        sample_rate=16000,
+        speech_model=SpeechModel.universal_streaming_english,
+        redact_pii=True,
+        redact_pii_policies=[
+            StreamingPiiPolicy.location_address,
+            StreamingPiiPolicy.location_address_street,
+            StreamingPiiPolicy.location_city,
+            StreamingPiiPolicy.location_coordinate,
+            StreamingPiiPolicy.location_country,
+            StreamingPiiPolicy.location_state,
+            StreamingPiiPolicy.location_zip,
+        ],
+    )
+    client.connect(params)
+
+    assert "redact_pii=True" in actual_url
+    assert "location_address" in actual_url
+    assert "location_address_street" in actual_url
+    assert "location_city" in actual_url
+    assert "location_coordinate" in actual_url
+    assert "location_country" in actual_url
+    assert "location_state" in actual_url
+    assert "location_zip" in actual_url
+
+
 def test_client_connect_with_voice_focus(mocker: MockFixture):
     # Given: client + voice_focus parameters
     actual_url = None
