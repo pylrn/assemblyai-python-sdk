@@ -198,6 +198,42 @@ async def test_client_connect_with_granular_location_pii_policies(
     await client.disconnect()
 
 
+async def test_client_connect_with_extended_pii_policies(
+    mocker: MockFixture,
+):
+    # Given: client + extended entity PII policies
+    fake_ws = _FakeAsyncWebSocket()
+    fake_connect = _patch_connect(mocker, fake_ws)
+
+    client = AsyncStreamingClient(
+        StreamingClientOptions(api_key="test", api_host="api.example.com")
+    )
+
+    # When: connecting
+    await client.connect(
+        StreamingParameters(
+            sample_rate=16000,
+            speech_model=SpeechModel.universal_streaming_english,
+            redact_pii=True,
+            redact_pii_policies=[
+                StreamingPiiPolicy.corporate_action,
+                StreamingPiiPolicy.financial_metric,
+                StreamingPiiPolicy.medical_code,
+                StreamingPiiPolicy.product,
+            ],
+        )
+    )
+
+    # Then: query string carries extended policies
+    assert "redact_pii=True" in fake_connect.uri
+    assert "corporate_action" in fake_connect.uri
+    assert "financial_metric" in fake_connect.uri
+    assert "medical_code" in fake_connect.uri
+    assert "product" in fake_connect.uri
+
+    await client.disconnect()
+
+
 async def test_stream_bytes_writes_to_socket(mocker: MockFixture):
     fake_ws = _FakeAsyncWebSocket()
     _patch_connect(mocker, fake_ws)
